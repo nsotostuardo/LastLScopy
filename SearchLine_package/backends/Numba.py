@@ -4,60 +4,49 @@ from numba import njit, prange
 from numpy.typing import NDArray
 from ..core.functions import get_mask
 
-@njit(parallel=True)
-def single_convolve(data:NDArray[np.float64], weights:NDArray[np.float64]) ->NDArray[np.float64]:
+def convolve_Z(data, kernel_z):
+    tmp = np.moveaxis(data, 0, 2)   
+    tmp = convolve_last_axis(tmp, kernel_z)
+    return np.moveaxis(tmp, 2, 0)   
+
+def convolve_Y(data, kernel_xy):
+    tmp = np.moveaxis(data, 1, 2)   
+    tmp = convolve_last_axis(tmp, kernel_xy)
+    return np.moveaxis(tmp, 2, 1)
+
+def convolve_X(data, kernel_xy):
+    tmp = np.moveaxis(data, 2, 0)   
+    tmp = convolve_last_axis(tmp, kernel_xy)
+    return np.moveaxis(tmp, 0, 2)   
+
+@njit(parallel=True, fastmath=True)
+def convolve_last_axis(data, weights):
     """
-    Convolves the datacube with Gaussian kernel parallelized using Numbda njit parallel (Threading) 
-
-    Parameters:
-    - data: data cube to be used, axis format [spatial, spatial, convolution axis]
-    - weights: 
+    Convolution over the LAST axis of data.
+    data: shape (A, B, C)
+    weights: 1D kernel
     """
+    A, B, C = data.shape
+    r = weights.size // 2
+    out = np.zeros_like(data)
 
-    z, y, x = data.shape
-    radius = len(weights) // 2
-    output = np.zeros_like(data)
+    for i in prange(A):
+        for j in range(B):
+            row = data[i, j]
+            out_row = out[i, j]
 
-    for j in prange(y):
-        for i in prange(x):
-            for k in range(z):
+            for k in range(C):
                 val = 0.0
-                for offset in range(-radius, radius + 1):
-                    zk = k - offset
-                    if 0 <= zk < z:
-                        val += weights[offset + radius] * data[zk, j, i]
-                output[k, j, i] = val
-    return output
+                k_min = max(0, k - r)
+                k_max = min(C - 1, k + r)
 
+                for zk in range(k_min, k_max + 1):
+                    val += row[zk] * weights[zk - k + r]
 
-class NumbaPipeline(Pipeline):
-    def gaussian_filtering(self, data, sigma):
-        if sigma == 0 :
-            return data
-        else:
-            kernel = self._1Dgaussian_kernel(sigma)
-            data = np.array(data, dtype='<f4')
-            result = single_convolve(data, kernel)
-            return result
-    
-    def _1Dgaussian_kernel(self, sigma:float, truncate:float=4.0) -> NDArray[np.float64]:
-        """
-        Generate a 1-D Gaussian kernel to be used as weight for convolution.
+                out_row[k] = val
 
-        Parameters:
-        -sigma: Standard deviation for the Gaussian kernel
-        -truncate: Truncate the filter at this many standard deviations
+    return out
 
-        Returns:
-        - 1D np.array normalized kernel 
-        """
-        radius = int(truncate * sigma + 0.5)
-        x = np.arange(-radius, radius + 1)
-        w = np.exp(-0.5 * (x / sigma)**2)
-        w /= w.sum()
-        return w
-
-    
 @njit
 def nanmean_std(arr):
     count = 0
@@ -118,6 +107,45 @@ def process_cube_with_mask( data, mask):
                     data[i, j, k] = np.nan
         data[i] = RMS_process(data[i])
 
+
+    
+class NumbaPipeline(Pipeline):
+
+    def gaussian_filtering(self, data:NDArray[np.float64], sigma:float, spatial_sigma:float,  truncate:float=4.0)-> NDArray[np.float64]:
+
+        data = np.asarray(data, dtype=np.float32)
+
+        kernel_z  = self._1Dgaussian_kernel(sigma, truncate).astype(np.float32)
+        kernel_xy = self._1Dgaussian_kernel(spatial_sigma, truncate).astype(np.float32)
+
+        if sigma > 0:
+            data = convolve_Z(data, kernel_z)
+
+        if spatial_sigma > 0:
+            data = convolve_Y(data, kernel_xy)
+
+        if spatial_sigma > 0:
+            data = convolve_X(data, kernel_xy)
+
+        return data
+    
+    def _1Dgaussian_kernel(self, sigma:float, truncate:float=4.0) -> np.ndarray: 
+        """ 
+        Generate a 1-D Gaussian kernel to be used as weight for convolution. 
+        Parameters:
+            -sigma: Standard deviation for the Gaussian kernel 
+            -truncate: Truncate the filter at this many standard deviations Returns: 
+            - 1D np.array normalized kernel 
+        """ 
+        if sigma <= 0:
+            return np.array([1.0], dtype=np.float32)
+        
+        radius = int(truncate * sigma + 0.5) 
+        x = np.arange(-radius, radius + 1, dtype=np.float32) 
+        w = np.exp(-0.5 * (x / sigma)**2).astype(np.float32)
+        w /= w.sum() 
+        return w
+    
 class NumbaRMS(RMSPipeline):
 
     def use_mask(self, data:NDArray[np.float64], mask_value = np.nan) -> NDArray[np.float64]:
@@ -136,5 +164,3 @@ class NumbaRMS(RMSPipeline):
             process_cube_nomask(data)
 
         return(data)
-    
-    
