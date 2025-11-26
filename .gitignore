@@ -1,0 +1,5 @@
+
+*.fits
+*.pdf
+__pycache__
+OutputLineSearch
