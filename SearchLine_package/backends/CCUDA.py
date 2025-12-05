@@ -1,6 +1,6 @@
 from ..core.pipeline import Pipeline
 from numpy.typing import NDArray
-from ..utils.CUDAdecorators import Vram_clean
+from ..utils.CUDAdecorators import Vram_clean, compile_c
 import cupy as cp
 import numpy as np
 
@@ -10,7 +10,9 @@ class CudaPipeline(Pipeline):
         self._module = None
         self._kernel_axis0 = None
         self._kernel_spatial = None
-        self._compile_c()
+        self.cuda_things = compile_c()
+        self._kernel_func = self.cuda_things[1] 
+        self._kernel_spatial = self.cuda_things[2]
     
     @Vram_clean
     def gaussian_filtering(self, data:NDArray[np.float64], sigma:float, spatial_sigma:float,  truncate:float=4.0)-> NDArray[np.float64]:
@@ -88,7 +90,7 @@ class CudaPipeline(Pipeline):
         return kernel
 
 
-    def _compile_c(self) -> str:
+    def __compile_c(self) -> str:
         """
         Returns C code to be compiled with _compile_c
         """
