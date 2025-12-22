@@ -66,7 +66,8 @@ class RealSources(ABC): #### Agrgar el espacial...
                 for k in unique_labels:
                     class_member_mask = (labels == k)
                     source = [ channels[class_member_mask],
-                              x[class_member_mask], y[class_member_mask],
+                              x[class_member_mask], 
+                              y[class_member_mask],
                               SN[class_member_mask], 
                               max(channels[class_member_mask]) - min(channels[class_member_mask])
                               ]
