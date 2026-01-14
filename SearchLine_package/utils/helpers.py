@@ -70,6 +70,25 @@ def channel_width(cube:str, kernel:str):
         ApproxMaxSigmas = int ((1000.0/ApproxChannelVelocityWidth))+1
         print('*** MaxSigmas should be of the order of ',ApproxMaxSigmas,'to detect a line width of ~ 1000 km/s for the Tophat Kernel (considering the reference frequency CRVAL3)***')
     
+def FractionEPS_check(fraction:float):
+    """
+    Checks if FractionEPS is within valid range [0,1].
+
+    Parameters
+    ----------
+    fraction : float
+        Value to validate.
+
+    Raises
+    ------
+    ValueError
+        If fraction is outside [0,1].
+    """
+    if not 0 <= fraction <= 1:
+       raise ValueError(
+           f"FractionEPS must be between 0 and 1. Received: {fraction}"
+           )
+
 
 def check_args(args):
     print(20*'#','Checking inputs....',20*'#')
@@ -80,6 +99,7 @@ def check_args(args):
     use_mask(args.UseMask, args.ContinuumImage, args.MaskSN)
     check_kernel(args.Kernel)
     channel_width(args.Cube, args.Kernel)
+    FractionEPS_check(args.FractionEPS)
 
 def check_separability(args):
     """

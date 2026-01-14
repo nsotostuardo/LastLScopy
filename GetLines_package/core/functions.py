@@ -97,7 +97,7 @@ def plot_N_positive_negative(estimates, NPositive_e1, NPositive_e2, sigma, spati
 
 	# ax2.semilogy(bins,NPositive,'o',color=cc[0],label='Positive Detections')
 	ax2.errorbar(bins[NPositive>0],NPositive[NPositive>0],yerr=[NPositive_e1[NPositive>0],NPositive_e2[NPositive>0]],fmt='o',color=cc[0],label='Positive Detections',zorder=0)
-	ax2.errorbar(bins[NnegativeReal>0],Nnegative[NnegativeReal>0],yerr=[Nnegative_e1[NnegativeReal>0],Nnegative_e2[NnegativeReal>0]],fmt='o',color=cc[1],label='Negative Detections for sigmas:'+str(sigma),zorder=0)
+	ax2.errorbar(bins[NnegativeReal>0],Nnegative[NnegativeReal>0],yerr=[Nnegative_e1[NnegativeReal>0],Nnegative_e2[NnegativeReal>0]],fmt='o',color=cc[1],label='Negative Detections for sigmas:'+str(sigma)+"_"+str(spatial),zorder=0)
 	ax2.semilogy(bins,NegativeFitted,'-',color=cc[2],label='Fitted negative underlying rate',zorder=1)
 	ax2.set_xlabel('S/N',fontsize=20)
 	ax2.set_ylabel('N (>S/N)',fontsize=20)

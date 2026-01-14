@@ -55,6 +55,8 @@ def parse_args():
     
     parser.add_argument('-EPS', type=float, default=5.0, required=False , help = 'EPS value to use if User sets -UserEPS to True [Default:5.0]')
     parser.add_argument('-UserEPS', type=str, default='False',choices=['True','False'], required=False , help = 'Whether to use EPS value entered from user otherwise use number of pixels per bmaj [Default:False]')
+    parser.add_argument('-FractionEPS', type=float, default=1.0, required=False , help = 'Fraction of the EPS value to be used, must be from 0 to 1 inclusive [Default:1]')
+
 
     args = parser.parse_args()
 
