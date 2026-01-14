@@ -34,7 +34,7 @@ def main(args):
     negative_sources = Negative(args)
 
     for sigmas in range(args.MaxSigmas):
-        for spatial in range(args.NSigmaSpatial):
+        for spatial in range(args.NSigmaSpatial + 1):
             if sigmas == 0 and args.SkipIndChan=='True':
                 print('skipping individual channels....')
                 continue

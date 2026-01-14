@@ -6,3 +6,4 @@ OutputLineSearch
 *.txt
 *.prof
 *.drawio
+*.ipynb
