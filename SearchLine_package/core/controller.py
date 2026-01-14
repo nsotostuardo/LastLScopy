@@ -50,17 +50,17 @@ def main(args):
     data = open_cube(args.Cube) 
     EPS = pixels_BMAJ(args)
 
-    if False:#check_separability(args):
+    if check_separability(args):
         for spatial in range(args.NSigmaSpatial + 1):
             spatial_modified = spatial * EPS 
             filtered_data = pipeline.gaussian_filtering(data, 0, spatial_modified)
             for sigmas in range(args.MaxSigmas):
                 print(100*'#')
                 print(f'Starting search of lines with parameter for filter equal to {sigmas} channels')
-                filtered_data = pipeline.gaussian_filtering(filtered_data, sigmas, 0)
-                filtered_data = rms_pipe.rms_filtering(filtered_data, args.UseMask)
-                save_positives(filtered_data, args.MinSN, args.OutputPath, sigmas, spatial)
-                save_negatives(filtered_data, args.MinSN, args.OutputPath, sigmas, spatial)
+                tmp = pipeline.gaussian_filtering(filtered_data, sigmas, 0)
+                tmp = rms_pipe.rms_filtering(tmp, args.UseMask)
+                save_positives(tmp, args.MinSN, args.OutputPath, sigmas, spatial)
+                save_negatives(tmp, args.MinSN, args.OutputPath, sigmas, spatial)
 
     else:
         for sigmas in range(args.MaxSigmas):
