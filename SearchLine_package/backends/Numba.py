@@ -79,7 +79,7 @@ def RMS_process( slice_2d):
             total += val
             count += 1
     if count == 0:
-        return slice_2d.astype(np.float32)
+        return slice_2d.astype(np.float32, copy=False)
 
     mean = total / count
     sq_diff = 0.0
@@ -88,9 +88,9 @@ def RMS_process( slice_2d):
             sq_diff += (val - mean) ** 2
     final_std = (sq_diff / count) ** 0.5
     if final_std == 0.0:
-        return slice_2d.astype(np.float32)
+        return slice_2d.astype(np.float32, copy=False)
 
-    return (slice_2d / np.float32(final_std)).astype(np.float32)
+    return (slice_2d / np.float32(final_std)).astype(np.float32, copy=False)
 
 @njit(parallel=True)
 def process_cube_nomask( data):
@@ -115,8 +115,8 @@ class NumbaPipeline(Pipeline):
 
         data = np.asarray(data, dtype=np.float32)
 
-        kernel_z  = self._1Dgaussian_kernel(sigma, truncate).astype(np.float32)
-        kernel_xy = self._1Dgaussian_kernel(spatial_sigma, truncate).astype(np.float32)
+        kernel_z  = self._1Dgaussian_kernel(sigma, truncate).astype(np.float32, copy=False)
+        kernel_xy = self._1Dgaussian_kernel(spatial_sigma, truncate).astype(np.float32, copy=False)
 
         if sigma > 0:
             data = convolve_Z(data, kernel_z)
@@ -142,7 +142,7 @@ class NumbaPipeline(Pipeline):
         
         radius = int(truncate * sigma + 0.5) 
         x = np.arange(-radius, radius + 1, dtype=np.float32) 
-        w = np.exp(-0.5 * (x / sigma)**2).astype(np.float32)
+        w = np.exp(-0.5 * (x / sigma)**2).astype(np.float32, copy=False)
         w /= w.sum() 
         return w
     

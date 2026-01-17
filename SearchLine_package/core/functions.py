@@ -50,6 +50,7 @@ def GetMinSNEstimate(CubePath):
 	# print len(data[0][np.isfinite(data[0])].flatten())*1.0/factor[0]*(len(data)/ApproxMaxSigmas)
 	return 
 
+
 def pixels_BMAJ(args):
 	if args.UserEPS=='False':
 		PixelsPerBMAJ = GetPixelsPerBMAJ(args.Cube)
@@ -61,10 +62,10 @@ def pixels_BMAJ(args):
 		print('*** Using EPS value of '+str(PixelsPerBMAJ)+'***')
 	return PixelsPerBMAJ
 
-def GetPixelsPerBMAJ(CubePath):
+def GetPixelsPerBMAJ(CubePath): ### Otra lectura de Cubo
 	hdulist =   fits.open(CubePath,memmap=True)
 	head = hdulist[0].header
-	data = hdulist[0].data[0]
+	nchan = head.get('NAXIS3', None)
 
 	try:
 		BMAJ = hdulist[1].data.field('BMAJ')
@@ -74,7 +75,7 @@ def GetPixelsPerBMAJ(CubePath):
 		BMAJ = []
 		BMIN = []
 		BPA = []
-		for i in range(len(data)):
+		for i in range(len(nchan)):
 			BMAJ.append(head['BMAJ']*3600.0)
 			BMIN.append(head['BMIN']*3600.0)
 			BPA.append(head['BPA'])
@@ -83,7 +84,6 @@ def GetPixelsPerBMAJ(CubePath):
 		BPA = np.array(BPA)
 	pix_size = head['CDELT2']*3600.0
 	return max(BMAJ/pix_size)
-
 
 def get_mask(ContinuumImage, MaskSN):
 	DataMask = fits.open(ContinuumImage,memmap=True)[0].data[0][0] 

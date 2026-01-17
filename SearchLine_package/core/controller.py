@@ -52,11 +52,11 @@ def main(args):
 
     if check_separability(args):
         for spatial in range(args.NSigmaSpatial + 1):
-            spatial_modified = spatial * EPS * args.FractionEPS
-            filtered_data = pipeline.gaussian_filtering(data, 0, spatial_modified)
             for sigmas in range(args.MaxSigmas):
                 print(100*'#')
                 print(f'Starting search of lines with parameter for filter equal to {sigmas} channels')
+                spatial_modified = spatial * EPS * args.FractionEPS
+                filtered_data = pipeline.gaussian_filtering(data, 0, spatial_modified)
                 tmp = pipeline.gaussian_filtering(filtered_data, sigmas, 0)
                 tmp = rms_pipe.rms_filtering(tmp, args.UseMask)
                 save_positives(tmp, args.MinSN, args.OutputPath, sigmas, spatial)
