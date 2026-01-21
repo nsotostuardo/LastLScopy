@@ -75,7 +75,7 @@ def GetPixelsPerBMAJ(CubePath): ### Otra lectura de Cubo
 		BMAJ = []
 		BMIN = []
 		BPA = []
-		for i in range(len(nchan)):
+		for i in range(nchan):
 			BMAJ.append(head['BMAJ']*3600.0)
 			BMIN.append(head['BMIN']*3600.0)
 			BPA.append(head['BPA'])
