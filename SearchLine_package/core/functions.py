@@ -45,6 +45,7 @@ def GetMinSNEstimate(CubePath):
 	ApproxChannelVelocityWidth = (abs(ChannelSpacing)/RefFrequency)*3e5
 	ApproxMaxSigmas = 1000.0/ApproxChannelVelocityWidth
 	aux = len(data[0][np.isfinite(data[0])].flatten())*1.0/factor[0]*(len(data)/ApproxMaxSigmas)
+	### Flatten crea una copia, quizas usar .ravel
 	Number2Print = round(np.power(10,np.log10(aux)*0.07723905 + 0.19291493),1)
 	print('*** A rough guesstimate to use as MinSN is',Number2Print,'***')
 	# print len(data[0][np.isfinite(data[0])].flatten())*1.0/factor[0]*(len(data)/ApproxMaxSigmas)
@@ -72,6 +73,8 @@ def GetPixelsPerBMAJ(CubePath): ### Otra lectura de Cubo
 		BMIN = hdulist[1].data.field('BMIN')
 		BPA = hdulist[1].data.field('BPA')
 	except:
+		if nchan is None:
+			nchan = hdulist[0].shape[1]
 		BMAJ = []
 		BMIN = []
 		BPA = []

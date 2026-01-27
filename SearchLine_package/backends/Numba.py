@@ -4,23 +4,26 @@ from numba import njit, prange
 from numpy.typing import NDArray
 from ..core.functions import get_mask
 
-def convolve_Z(data, kernel_z):
-    tmp = np.moveaxis(data, 0, 2)   
-    tmp = convolve_last_axis(tmp, kernel_z)
-    return np.moveaxis(tmp, 2, 0)   
+def convolve_Z(data, kernel_z, out):
+    tmp = np.moveaxis(data, 0, 2)
+    out_tmp = np.moveaxis(out, 0, 2)
+    convolve_last_axis(tmp, kernel_z, out_tmp)
+    return out
 
-def convolve_Y(data, kernel_xy):
-    tmp = np.moveaxis(data, 1, 2)   
-    tmp = convolve_last_axis(tmp, kernel_xy)
-    return np.moveaxis(tmp, 2, 1)
+def convolve_Y(data, kernel_xy, out):
+    tmp = np.moveaxis(data, 1, 2)
+    out_tmp = np.moveaxis(out, 1, 2)
+    convolve_last_axis(tmp, kernel_xy, out_tmp)
+    return out
 
-def convolve_X(data, kernel_xy):
-    tmp = np.moveaxis(data, 2, 0)   
-    tmp = convolve_last_axis(tmp, kernel_xy)
-    return np.moveaxis(tmp, 0, 2)   
+def convolve_X(data, kernel_xy, out):
+    tmp = np.moveaxis(data, 2, 0)
+    out_tmp = np.moveaxis(out, 2, 0)
+    convolve_last_axis(tmp, kernel_xy, out_tmp)
+    return out
 
 @njit(parallel=True, fastmath=True)
-def convolve_last_axis(data, weights):
+def convolve_last_axis(data, weights, out):
     """
     Convolution over the LAST axis of data.
     data: shape (A, B, C)
@@ -28,7 +31,6 @@ def convolve_last_axis(data, weights):
     """
     A, B, C = data.shape
     r = weights.size // 2
-    out = np.zeros_like(data)
 
     for i in prange(A):
         for j in range(B):
@@ -114,18 +116,22 @@ class NumbaPipeline(Pipeline):
     def gaussian_filtering(self, data:NDArray[np.float64], sigma:float, spatial_sigma:float,  truncate:float=4.0)-> NDArray[np.float64]:
 
         data = np.asarray(data, dtype=np.float32)
+        tmp = np.empty_like(data)
 
         kernel_z  = self._1Dgaussian_kernel(sigma, truncate).astype(np.float32, copy=False)
         kernel_xy = self._1Dgaussian_kernel(spatial_sigma, truncate).astype(np.float32, copy=False)
 
         if sigma > 0:
-            data = convolve_Z(data, kernel_z)
+            convolve_Z(data, kernel_z, tmp)
+            data, tmp = tmp, data
 
         if spatial_sigma > 0:
-            data = convolve_Y(data, kernel_xy)
+            convolve_Y(data, kernel_xy, tmp)
+            data, tmp = tmp, data
 
         if spatial_sigma > 0:
-            data = convolve_X(data, kernel_xy)
+            convolve_X(data, kernel_xy, tmp)
+            data, tmp = tmp, data
 
         return data
     
@@ -155,7 +161,7 @@ class NumbaRMS(RMSPipeline):
 
     def rms_filtering(self, data:NDArray[np.float64], use_mask= False) -> NDArray[np.float64]:
         print("Using Numba nanstd") 
-        data = np.array(data, dtype='<f4')
+        data = np.asarray(data, dtype=np.float32)
         if use_mask:
             mask = self.use_mask(data)
             process_cube_with_mask(data, mask)

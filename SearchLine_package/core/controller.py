@@ -56,11 +56,11 @@ def main(args):
                 print(100*'#')
                 print(f'Starting search of lines with parameter for filter equal to {sigmas} channels')
                 spatial_modified = spatial * EPS * args.FractionEPS
-                filtered_data = pipeline.gaussian_filtering(data, 0, spatial_modified)
-                tmp = pipeline.gaussian_filtering(filtered_data, sigmas, 0)
-                tmp = rms_pipe.rms_filtering(tmp, args.UseMask)
-                save_positives(tmp, args.MinSN, args.OutputPath, sigmas, spatial)
-                save_negatives(tmp, args.MinSN, args.OutputPath, sigmas, spatial)
+                filtered = pipeline.gaussian_filtering(data, 0, spatial_modified)
+                filtered = pipeline.gaussian_filtering(filtered, sigmas, 0)
+                filtered = rms_pipe.rms_filtering(filtered, args.UseMask)
+                save_positives(filtered, args.MinSN, args.OutputPath, sigmas, spatial)
+                save_negatives(filtered, args.MinSN, args.OutputPath, sigmas, spatial)
 
     else:
         for sigmas in range(args.MaxSigmas):
@@ -70,8 +70,8 @@ def main(args):
 
                 spatial_modified = spatial * EPS * args.FractionEPS
                 print(f'                          Using spatial of {spatial}                         ')  
-                filtered_data = pipeline.gaussian_filtering(data, sigmas, spatial_modified)
-                filtered_data = rms_pipe.rms_filtering(filtered_data, args.UseMask)
-                save_positives(filtered_data, args.MinSN, args.OutputPath, sigmas, spatial)
-                save_negatives(filtered_data, args.MinSN, args.OutputPath, sigmas, spatial)
+                filtered = pipeline.gaussian_filtering(data, sigmas, spatial_modified)
+                filtered = rms_pipe.rms_filtering(filtered, args.UseMask)
+                save_positives(filtered, args.MinSN, args.OutputPath, sigmas, spatial)
+                save_negatives(filtered, args.MinSN, args.OutputPath, sigmas, spatial)
     
