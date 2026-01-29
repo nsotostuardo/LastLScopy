@@ -7,3 +7,4 @@ OutputLineSearch
 *.prof
 *.drawio
 *.ipynb
+bench_numba.py
