@@ -72,7 +72,7 @@ def nanmean_std(arr):
 def RMS_process( slice_2d):
     flat = slice_2d.ravel()
     _, initial_std = nanmean_std(flat)
-    threshold = np.float32(5.0) * np.float32(initial_std)
+    threshold = np.float32(5.0) * np.float32(initial_std) 
 
     count = 0
     total = 0.0
@@ -81,7 +81,7 @@ def RMS_process( slice_2d):
             total += val
             count += 1
     if count == 0:
-        return slice_2d.astype(np.float32, copy=False)
+        return slice_2d.astype(np.float32) #, copy=False)
 
     mean = total / count
     sq_diff = 0.0
@@ -90,9 +90,9 @@ def RMS_process( slice_2d):
             sq_diff += (val - mean) ** 2
     final_std = (sq_diff / count) ** 0.5
     if final_std == 0.0:
-        return slice_2d.astype(np.float32, copy=False)
+        return slice_2d.astype(np.float32) #, copy=False)
 
-    return (slice_2d / np.float32(final_std)).astype(np.float32, copy=False)
+    return (slice_2d / np.float32(final_std)).astype(np.float32) #, copy=False)
 
 @njit(parallel=True)
 def process_cube_nomask( data):
