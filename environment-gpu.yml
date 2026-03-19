@@ -1,0 +1,17 @@
+name: lineseeker-gpu
+channels:
+  - rapidsai
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.12.3
+  - numpy=1.26.4
+  - astropy=6.1.2
+  - matplotlib=3.9.4
+  - scipy=1.14.0
+  - scikit-learn=1.5.1
+  - numba=0.60.0
+  - psutil=6.1.0
+  - cupy=13.4.1
+  - cudf=25.4.0
+  - cuml=25.4.0

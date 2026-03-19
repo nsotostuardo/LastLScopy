@@ -8,3 +8,10 @@ OutputLineSearch
 *.drawio
 *.ipynb
 bench_numba.py
+README.md
+.ipynb_checkpoints
+SearchLine2.py
+SearchLine2
+SearchLine_package/core/controller3.py
+SearchLine_package/core/controller2.py
+SN_UsedInFit.dat
