@@ -10,7 +10,7 @@ def check_file(path:str):
 
 def check_output_path(path:str):
     """Verifies output directory existance"""
-    if not os.path.isfile(path):
+    if not os.path.exists(path):
         print('*** Creating Directory',path,' ***')
         os.mkdir(path)
     else:

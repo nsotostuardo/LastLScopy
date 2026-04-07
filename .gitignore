@@ -14,4 +14,7 @@ SearchLine2.py
 SearchLine2
 SearchLine_package/core/controller3.py
 SearchLine_package/core/controller2.py
+SearchLine_package/core/controller4.py
 SN_UsedInFit.dat
+
+!device_test.ipynb
