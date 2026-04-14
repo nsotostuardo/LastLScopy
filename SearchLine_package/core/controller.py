@@ -15,8 +15,14 @@ def get_pipeline(args):
     elif args.backend == 'GPUkernel':
         from ..backends.CCUDA import CudaPipeline
         return CudaPipeline(args)
+    elif args.backend == 'Torch':
+        from ..backends.Pytorch import TorchPipeline
+        return TorchPipeline(args)
+    elif args.backend == 'MLX':
+            from ..backends.MLX import MLXPipeline
+            return MLXPipeline(args)
     else:
-        raise ValueError("Invalid Backend")
+        raise ValueError("Invalid Backend") 
     
 def get_rms_pipeline(args):
     if args.rms == 'Numpy':

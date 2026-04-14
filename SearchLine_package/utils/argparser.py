@@ -42,7 +42,7 @@ def parse_args():
                         help = 'Type of kernel to use for the convolution. [Default:Gaussian]'
                         )
 
-    parser.add_argument('-backend', type=str, default = 'CPU', choices=['CPU', 'CPUThread', 'GPUkernel', 'GPUfilter'], required=False,
+    parser.add_argument('-backend', type=str, default = 'CPU', choices=['CPU', 'CPUThread', 'GPUkernel', 'GPUfilter', "Torch","MLX"], required=False,
                         help = 'Backend to be used for convolution: CPU (scipy or multi Threading) or GPU (custome C++ kernel or Gaussian Filter). [Default:CPU]'
                         )
     parser.add_argument('-rms', type=str, default = 'Numpy', choices=['Numpy', 'Numba', 'Cupy'], required=False, 
@@ -56,7 +56,12 @@ def parse_args():
     parser.add_argument('-EPS', type=float, default=5.0, required=False , help = 'EPS value to use if User sets -UserEPS to True [Default:5.0]')
     parser.add_argument('-UserEPS', type=str, default='False',choices=['True','False'], required=False , help = 'Whether to use EPS value entered from user otherwise use number of pixels per bmaj [Default:False]')
     parser.add_argument('-FractionEPS', type=float, default=1.0, required=False , help = 'Fraction of the EPS value to be used, must be from 0 to 1 inclusive [Default:1]')
-
+    parser.add_argument('-TorchDevice', type=str, default = 'cpu', choices=['cuda', 'mps', 'xpu','cpu'], required=False, 
+                        help = 'Calculation Device for Pytorch pipeline. cuda:NVIDEA, mps: Apple Metal, xpu:Intel GPU, cpu. [Default:cpu]'
+                        )
+    parser.add_argument('-DeviceMLX', type=str, default = 'cpu', choices=['cpu', 'gpu'], required=False, 
+                        help = 'Calculation Device for MLX pipeline. gpu:cuda/metal, cpu:cpu. [Default:cpu]'
+                        )
 
     args = parser.parse_args()
 

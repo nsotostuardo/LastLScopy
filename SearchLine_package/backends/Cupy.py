@@ -6,7 +6,7 @@ import cupy as cp
 import numpy as np  
 
 class CuPyPipeline(Pipeline):
-    #Hacer antes el Hacerlos Sigmas juntos
+    
     @Vram_clean
     def gaussian_filtering(self, data:NDArray[np.float64], sigma:float, spatial_sigma:float, mode:str="constant", cval:float=0.0, truncate:float=4.0)-> NDArray[np.float64]:
         data_gpu = cp.asarray(data)
