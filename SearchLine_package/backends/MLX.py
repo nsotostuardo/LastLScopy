@@ -10,7 +10,7 @@ class MLXPipeline(Pipeline):
         super().__init__(args)
         self.device_mlx = self._getdevice(args.DeviceMLX)
         self._kernel_cache: dict[tuple[float, float, object], mx.array] = {}
-        self.chunk_depth = getattr(args, "MLXChunkDepth", None)
+        self.spatial_chunk_size = getattr(args, "MLXSpatialChunkSize", None)
 
     def _getdevice(self, mode):
         return mx.gpu if mode == "gpu" else mx.cpu
@@ -36,12 +36,12 @@ class MLXPipeline(Pipeline):
 
         if sigma > 0:
             kernel_z = self._get_1d_kernel(sigma, truncate, cubo.dtype)
-            cubo = self._convolve_axis_chunked(cubo, kernel_z, axis=0, halo=int(kernel_z.shape[0] // 2))
+            cubo = self._convolve_axis_spatially_chunked(cubo, kernel_z, axis=0)
 
         if spatial_sigma > 0:
             kernel_xy = self._get_1d_kernel(spatial_sigma, truncate, cubo.dtype)
-            cubo = self._convolve_axis_chunked(cubo, kernel_xy, axis=1, halo=0)
-            cubo = self._convolve_axis_chunked(cubo, kernel_xy, axis=2, halo=0)
+            cubo = self._convolve_axis_spatially_chunked(cubo, kernel_xy, axis=1)
+            cubo = self._convolve_axis_spatially_chunked(cubo, kernel_xy, axis=2)
 
         mx.eval(cubo)
         res_np = np.array(cubo)
@@ -68,30 +68,6 @@ class MLXPipeline(Pipeline):
             self._kernel_cache[key] = kernel
         return kernel
 
-    def _convolve_axis_chunked(self, data: mx.array, kernel_1d: mx.array, axis: int, halo: int) -> mx.array:
-        depth = int(data.shape[1])
-        chunk_depth = self._resolve_chunk_depth(data)
-        if chunk_depth >= depth:
-            return self._convolve_axis(data, kernel_1d, axis=axis)
-
-        chunks = []
-        for start in range(0, depth, chunk_depth):
-            stop = min(start + chunk_depth, depth)
-            read_start = max(0, start - halo)
-            read_stop = min(depth, stop + halo)
-
-            chunk = data[:, read_start:read_stop, :, :, :]
-            chunk = self._convolve_axis(chunk, kernel_1d, axis=axis)
-
-            crop_start = start - read_start
-            crop_stop = crop_start + (stop - start)
-            chunk = chunk[:, crop_start:crop_stop, :, :, :]
-            chunks.append(chunk)
-
-        result = mx.concatenate(chunks, axis=1)
-        mx.eval(result)
-        return result
-
     def _convolve_axis(self, data: mx.array, kernel_1d: mx.array, axis: int) -> mx.array:
         radius = int(kernel_1d.shape[0] // 2)
         if axis == 0:
@@ -108,18 +84,59 @@ class MLXPipeline(Pipeline):
 
         return mx.conv3d(data, weight, padding=padding, stream=self.device_mlx)
 
-    def _resolve_chunk_depth(self, data: mx.array) -> int:
-        if self.chunk_depth is not None:
-            return max(1, int(self.chunk_depth))
+    def _convolve_axis_spatially_chunked(self, data: mx.array, kernel_1d: mx.array, axis: int) -> mx.array:
+        ny = int(data.shape[2])
+        nx = int(data.shape[3])
+        chunk_size = self._resolve_spatial_chunk_size(data)
+        if chunk_size >= ny and chunk_size >= nx:
+            return self._convolve_axis(data, kernel_1d, axis=axis)
 
-        plane_bytes = int(data.shape[2]) * int(data.shape[3]) * 4
-        if plane_bytes <= 0:
-            return int(data.shape[1])
+        halo_y = int(kernel_1d.shape[0] // 2) if axis == 1 else 0
+        halo_x = int(kernel_1d.shape[0] // 2) if axis == 2 else 0
 
-        # Keep each chunk comfortably below the Metal single-buffer limit.
-        target_bytes = 512 * 1024 * 1024
-        chunk_depth = max(1, target_bytes // plane_bytes)
-        return max(8, min(int(data.shape[1]), int(chunk_depth)))
+        rows = []
+        for y_start in range(0, ny, chunk_size):
+            y_stop = min(y_start + chunk_size, ny)
+            read_y_start = max(0, y_start - halo_y)
+            read_y_stop = min(ny, y_stop + halo_y)
+
+            cols = []
+            for x_start in range(0, nx, chunk_size):
+                x_stop = min(x_start + chunk_size, nx)
+                read_x_start = max(0, x_start - halo_x)
+                read_x_stop = min(nx, x_stop + halo_x)
+
+                chunk = data[:, :, read_y_start:read_y_stop, read_x_start:read_x_stop, :]
+                chunk = self._convolve_axis(chunk, kernel_1d, axis=axis)
+
+                crop_y_start = y_start - read_y_start
+                crop_y_stop = crop_y_start + (y_stop - y_start)
+                crop_x_start = x_start - read_x_start
+                crop_x_stop = crop_x_start + (x_stop - x_start)
+                chunk = chunk[:, :, crop_y_start:crop_y_stop, crop_x_start:crop_x_stop, :]
+                cols.append(chunk)
+
+            row = mx.concatenate(cols, axis=3)
+            mx.eval(row)
+            rows.append(row)
+
+        result = mx.concatenate(rows, axis=2)
+        mx.eval(result)
+        return result
+
+    def _resolve_spatial_chunk_size(self, data: mx.array) -> int:
+        if self.spatial_chunk_size is not None:
+            return max(1, int(self.spatial_chunk_size))
+
+        spectral_bytes = int(data.shape[1]) * 4
+        if spectral_bytes <= 0:
+            return max(int(data.shape[2]), int(data.shape[3]))
+
+        # Estimate a square spatial tile whose raw tensor footprint stays moderate.
+        target_bytes = 256 * 1024 * 1024
+        approx_area = max(1, target_bytes // spectral_bytes)
+        chunk_size = int(max(32, np.sqrt(approx_area)))
+        return min(chunk_size, int(data.shape[2]), int(data.shape[3]))
 
 
 def gaussian_kernel_1d_mlx(sigma: float, truncate: float = 4.0, dtype=mx.float32) -> mx.array:
