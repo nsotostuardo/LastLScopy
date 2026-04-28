@@ -174,7 +174,7 @@ class RealSources(ABC): #### Agrgar el espacial...
         self.SN = self.SN[np.argsort(self.SN)][::-1]
 
         self.SN = np.rint(self.SN * 10.0).astype(np.int32)
-	    self.SN = self.SN.astype(np.float64) / 10.0
+        self.SN = self.SN.astype(np.float64) / 10.0
 
     def get_sources_total_pos(self, estimates, sigma, spatial):
         bins = estimates["bins"]
