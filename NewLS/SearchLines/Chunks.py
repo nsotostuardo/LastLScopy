@@ -112,18 +112,19 @@ def gaussian_halo(sigmaz, sigmay, sigmax, truncate=4.0):
 
 def plan_chunks(shape, chunk_size = None):
     zsize, ysize, xsize = shape
-    z0 = 0
-    z1 = zsize
-    #for z0 in range(0, zsize, chunk_z):
-    #    z1 = min(z0 + chunk_z, zsize)
+    x0 = y0 = 0
+    x1 = xsize
+    y1 = ysize
+    for z0 in range(0, zsize, chunk_size):
+        z1 = min(z0 + chunk_size, zsize)
 
-    for y0 in range(0, ysize, chunk_size):
-        y1 = min(y0 + chunk_size, ysize)
+    #for y0 in range(0, ysize, chunk_size):
+    #    y1 = min(y0 + chunk_size, ysize)
 
-        for x0 in range(0, xsize, chunk_size):
-            x1 = min(x0 + chunk_size, xsize)
+    #    for x0 in range(0, xsize, chunk_size):
+    #        x1 = min(x0 + chunk_size, xsize)
 
-            yield (z0, z1, y0, y1, x0, x1)
+        yield (z0, z1, y0, y1, x0, x1)
 
 
 def get_cube_data(cube_path):
