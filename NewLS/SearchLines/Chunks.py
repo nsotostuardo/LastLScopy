@@ -16,92 +16,144 @@ def SearchLineChunked(args, sigma_z, sigma_xy, EPS):
                                truncate = truncate)
     print('Halo sizes:', (hz, hy, hx))
 
-    positive_tables = []
-    negative_tables = []
-
-    chunk_id = 0
+    
+    
     hdulist, cube = get_cube_data(args.Cube)
 
-    for z0, z1, y0, y1, x0, x1 in plan_chunks(cube.shape, args.Chunk):
-        print(
-            f'Processing chunk {chunk_id}: '
-            f'Z[{z0}:{z1}] Y[{y0}:{y1}] X[{x0}:{x1}]'
-        )
+    mask = None
+    if args.UseMask:
+        mask = get_mask(args.ContinuumImage, args.MaskSN)
+        print('Using continuum mask with shape:', mask.shape)
 
-        block, core_in_block, halo_slices = extract_block_with_halo(
-            cube, z0, z1, y0, y1, x0, x1, hz, hy, hx
-        )
+    temp_filtered_path = os.path.join(
+        args.OutputPath,
+        f'temp_filtered_{sigma_z}_{sigma_xy}.dat'
+    )
 
-        filtered = scipy.ndimage.gaussian_filter(
-            block,
-            sigma= [
-                sigma_z, 
-                sigma_xy * EPS *args.FractionEPS, 
-                sigma_xy * EPS *args.FractionEPS
-                ], 
-            mode="constant",
-            cval=0.0,
-            truncate=truncate,
-        )
+    filtered_cube = create_filtered_cube_temp(
+        temp_filtered_path,
+        cube.shape,
+        dtype=np.float32
+    )
+    try:
+        chunk_id = 0
+        for z0, z1, y0, y1, x0, x1 in plan_chunks(cube.shape, args.Chunk):
+            print(
+                f'Processing chunk {chunk_id}: '
+                f'Z[{z0}:{z1}] Y[{y0}:{y1}] X[{x0}:{x1}]'
+            )
 
-        core = filtered[core_in_block]
+            block, core_in_block, halo_slices = extract_block_with_halo(
+                cube, z0, z1, y0, y1, x0, x1, hz, hy, hx
+            )
 
-        mask = None
-        if args.UseMask:
-            mask = get_mask(args.ContinuumImage, args.MaskSN)
-            print('Using continuum mask with shape:', mask.shape)
+            if not np.isfinite(block).any():
+                filtered_cube[z0:z1, y0:y1, x0:x1] = np.nan
+                print(f'Chunk {chunk_id} skipped in filtering: block has no finite values')
+                chunk_id += 1
+                continue
 
-        if args.UseMask:
-            mask_core = mask[y0:y1, x0:x1]
-            pass
-        else:
-            mask_core = None
+            filtered = scipy.ndimage.gaussian_filter(
+                block,
+                sigma= [
+                    sigma_z, 
+                    sigma_xy * EPS *args.FractionEPS, 
+                    sigma_xy * EPS *args.FractionEPS
+                    ], 
+                mode="constant",
+                cval=0.0,
+                truncate=truncate,
+            )
 
-        core_norm = normalize_block_channelwise(
-            core,
+            core = filtered[core_in_block]
+
+            filtered_cube[z0:z1, y0:y1, x0:x1] = core
+
+            chunk_id += 1
+        
+        filtered_cube.flush()
+
+        initial_rms_per_channel, final_rms_per_channel = compute_rms_from_filtered_cube(
+            filtered_cube,
             use_mask=args.UseMask,
-            mask_block=mask_core,
+            mask=mask,
         )
 
-        pos_table, neg_table = detect_candidates(
-            core_norm,
-            args.MinSN,
-            z0=z0,
-            y0=y0,
-            x0=x0,
+        positive_tables = []
+        negative_tables = []
+        chunk_id = 0
+
+        for z0, z1, y0, y1, x0, x1 in plan_chunks(cube.shape, args.Chunk):
+            print(
+                f'Detecting chunk {chunk_id}: '
+                f'Z[{z0}:{z1}] Y[{y0}:{y1}] X[{x0}:{x1}]'
+            )
+
+            core = np.asarray(
+                filtered_cube[z0:z1, y0:y1, x0:x1],
+                dtype=np.float32
+            ).copy()
+
+            if not np.isfinite(core).any():
+                print(f'Chunk {chunk_id} skipped in detection: core has no finite values')
+                chunk_id += 1
+                continue
+
+            if args.UseMask and mask is not None:
+                mask_core = mask[y0:y1, x0:x1]
+                for iz in range(core.shape[0]):
+                    core[iz][mask_core] = np.nan
+
+            core_norm = normalize_block_with_global_rms(
+                core,
+                rms_per_channel=final_rms_per_channel,
+                z0=z0,
+            )
+
+            pos_table, neg_table = detect_candidates(
+                core_norm,
+                args.MinSN,
+                z0=z0,
+                y0=y0,
+                x0=x0,
+            )
+
+            if len(pos_table) > 0:
+                positive_tables.append(pos_table)
+
+            if len(neg_table) > 0:
+                negative_tables.append(neg_table)
+
+            print(
+                f'Chunk {chunk_id} -> positive: {len(pos_table)} | negative: {len(neg_table)}'
+            )
+            chunk_id += 1
+        
+        tpos = concatenate_tables(positive_tables)
+        tneg = concatenate_tables(negative_tables)
+
+        pos_name = os.path.join(
+            args.OutputPath,
+            f'line_candidates_{sigma_z}_{sigma_xy}_pos.fits'
+        )
+        neg_name = os.path.join(
+            args.OutputPath,
+            f'line_candidates_{sigma_z}_{sigma_xy}_neg.fits'
         )
 
-        if len(pos_table) > 0:
-            positive_tables.append(pos_table)
+        tpos.write(pos_name, format='fits', overwrite=True)
+        tneg.write(neg_name, format='fits', overwrite=True)
 
-        if len(neg_table) > 0:
-            negative_tables.append(neg_table)
+        print('Positive pixels in search for sigmas:', (sigma_z, sigma_xy), 'N:', len(tpos))
+        print('Negative pixels in search for sigmas:', (sigma_z, sigma_xy), 'N:', len(tneg))
+        
+    finally:
+        hdulist.close()
 
-        print(
-            f'Chunk {chunk_id} -> positive: {len(pos_table)} | negative: {len(neg_table)}'
-        )
-        chunk_id += 1
-
-    hdulist.close()
+        del filtered_cube
+        if os.path.exists(temp_filtered_path):
+            os.remove(temp_filtered_path)
     
-    tpos = concatenate_tables(positive_tables)
-    tneg = concatenate_tables(negative_tables)
-
-    pos_name = os.path.join(
-        args.OutputPath,
-        f'line_candidates_{sigma_z}_{sigma_xy}_pos.fits'
-    )
-    neg_name = os.path.join(
-        args.OutputPath,
-        f'line_candidates_{sigma_z}_{sigma_xy}_neg.fits'
-    )
-
-    tpos.write(pos_name, format='fits', overwrite=True)
-    tneg.write(neg_name, format='fits', overwrite=True)
-
-    print('Positive pixels in search for sigmas:', (sigma_z,sigma_xy), 'N:', len(tpos))
-    print('Negative pixels in search for sigmas:', (sigma_z, sigma_xy), 'N:', len(tneg))
-
 def gaussian_halo(sigmaz, sigmay, sigmax, truncate=4.0):
     return (
         int(ceil(truncate * sigmaz)),
@@ -109,23 +161,20 @@ def gaussian_halo(sigmaz, sigmay, sigmax, truncate=4.0):
         int(ceil(truncate * sigmax)),
     )
 
-
 def plan_chunks(shape, chunk_size = None):
     zsize, ysize, xsize = shape
-    x0 = y0 = 0
-    x1 = xsize
-    y1 = ysize
-    for z0 in range(0, zsize, chunk_size):
-        z1 = min(z0 + chunk_size, zsize)
+    z0 = 0
+    z1 = zsize
+    #for z0 in range(0, zsize, chunk_size):
+    #    z1 = min(z0 + chunk_size, zsize)
 
-    #for y0 in range(0, ysize, chunk_size):
-    #    y1 = min(y0 + chunk_size, ysize)
+    for y0 in range(0, ysize, chunk_size):
+        y1 = min(y0 + chunk_size, ysize)
 
-    #    for x0 in range(0, xsize, chunk_size):
-    #        x1 = min(x0 + chunk_size, xsize)
+        for x0 in range(0, xsize, chunk_size):
+            x1 = min(x0 + chunk_size, xsize)
 
-        yield (z0, z1, y0, y1, x0, x1)
-
+            yield (z0, z1, y0, y1, x0, x1)
 
 def get_cube_data(cube_path):
     hdul = fits.open(cube_path, memmap=True)
@@ -162,31 +211,6 @@ def extract_block_with_halo(cube, z0, z1, y0, y1, x0, x1, hz, hy, hx):
 
     halo_slices = (z0h, z1h, y0h, y1h, x0h, x1h)
     return block, core_in_block, halo_slices
-
-def normalize_block_channelwise(core_block, use_mask=False, mask_block=None):
-    """
-    - Máscara
-    - InitialRMS y FinalRMS 
-    - Normaliza  por FinalRMS
-    """
-    core_block = core_block.copy()
-
-    for i in range(len(core_block)):
-        if use_mask and mask_block is not None:
-            core_block[i][mask_block] = np.nan
-
-        initial_rms = np.nanstd(core_block[i])
-
-        valid = core_block[i][core_block[i] < 5.0 * initial_rms]
-        final_rms = np.nanstd(valid)
-
-        if not np.isfinite(final_rms) or final_rms == 0:
-            core_block[i] = np.nan
-        else:
-            core_block[i] = core_block[i] / final_rms
-
-    return core_block
-
 
 def detect_candidates(core_norm_block, min_sn, z0, y0, x0):
     pix1, pix2, pix3 = np.where(core_norm_block >= min_sn)
@@ -237,7 +261,6 @@ def concatenate_tables(tables):
     from astropy.table import vstack
     return vstack(tables, metadata_conflicts="silent")
 
-
 def get_mask(continuum_image, mask_sn):
     hdu = fits.open(continuum_image, memmap=True)
     data = hdu[0].data
@@ -255,3 +278,56 @@ def get_mask(continuum_image, mask_sn):
 
     hdu.close()
     return mask
+
+def create_filtered_cube_temp(temp_path, shape, dtype=np.float32):
+    return np.memmap(temp_path, dtype=dtype, mode='w+', shape=shape)
+
+def compute_rms_from_filtered_cube(filtered_cube, use_mask=False, mask=None):
+    zsize = filtered_cube.shape[0]
+
+    initial_rms_per_channel = np.full(zsize, np.nan, dtype=np.float32)
+    final_rms_per_channel = np.full(zsize, np.nan, dtype=np.float32)
+
+    for z in range(zsize):
+        plane = np.asarray(filtered_cube[z], dtype=np.float32).copy()
+
+        if use_mask and mask is not None:
+            plane[mask] = np.nan
+
+        initial_rms = np.nanstd(plane)
+        initial_rms_per_channel[z] = initial_rms
+
+        if not np.isfinite(initial_rms) or initial_rms == 0:
+            final_rms_per_channel[z] = np.nan
+            continue
+
+        valid = plane[plane < 5.0 * initial_rms]
+        valid = valid[np.isfinite(valid)]
+
+        if valid.size < 2:
+            final_rms_per_channel[z] = np.nan
+            continue
+
+        final_rms = np.nanstd(valid)
+
+        if not np.isfinite(final_rms) or final_rms == 0:
+            final_rms_per_channel[z] = np.nan
+            continue
+
+        final_rms_per_channel[z] = final_rms
+
+    return initial_rms_per_channel, final_rms_per_channel
+
+def normalize_block_with_global_rms(core_block, rms_per_channel, z0=0):
+    core_block = core_block.copy()
+
+    for local_z in range(core_block.shape[0]):
+        global_z = z0 + local_z
+        rms = rms_per_channel[global_z]
+
+        if not np.isfinite(rms) or rms == 0:
+            core_block[local_z] = np.nan
+        else:
+            core_block[local_z] = core_block[local_z] / rms
+
+    return core_block
