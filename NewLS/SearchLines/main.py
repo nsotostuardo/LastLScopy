@@ -49,8 +49,8 @@ def main(args):
 
 
     EPS = pixels_BMAJ(args)
-    z_list = [spatial for spatial in range(args.NSigmaSpatial + 1)]
-    xy_list = [i for i in range(args.MaxSigmas)]
+    z_list = [spectral for spectral in range(args.MaxSigmas)]
+    xy_list = [spatial for spatial in range(args.NSigmaSpatial + 1)]
 
     for sigma_z, sigma_xy in product(z_list, xy_list):
         SearchLineChunked(args, sigma_z, sigma_xy, EPS)
