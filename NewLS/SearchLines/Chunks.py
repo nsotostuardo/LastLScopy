@@ -25,16 +25,17 @@ def SearchLineChunked(args, sigma_z, sigma_xy, EPS):
         mask = get_mask(args.ContinuumImage, args.MaskSN)
         print('Using continuum mask with shape:', mask.shape)
 
-    temp_filtered_path = os.path.join(
-        args.OutputPath,
-        f'temp_filtered_{sigma_z}_{sigma_xy}.dat'
-    )
+    #temp_filtered_path = os.path.join(
+    #    args.OutputPath,
+    #    f'temp_filtered_{sigma_z}_{sigma_xy}.dat'
+    #)
 
-    filtered_cube = create_filtered_cube_temp(
-        temp_filtered_path,
-        cube.shape,
-        dtype=np.float32
-    )
+    filtered_cube = np.full(cube.shape, np.nan, dtype=np.float32)
+    #create_filtered_cube_temp(
+    #    temp_filtered_path,
+    #    cube.shape,
+    #    dtype=np.float32
+    #)
     try:
         chunk_id = 0
         for z0, z1, y0, y1, x0, x1 in plan_chunks(cube.shape, args.Chunk):
@@ -71,7 +72,7 @@ def SearchLineChunked(args, sigma_z, sigma_xy, EPS):
 
             chunk_id += 1
         
-        filtered_cube.flush()
+        #filtered_cube.flush()
 
         initial_rms_per_channel, final_rms_per_channel = compute_rms_from_filtered_cube(
             filtered_cube,
@@ -151,8 +152,8 @@ def SearchLineChunked(args, sigma_z, sigma_xy, EPS):
         hdulist.close()
 
         del filtered_cube
-        if os.path.exists(temp_filtered_path):
-            os.remove(temp_filtered_path)
+        #if os.path.exists(temp_filtered_path):
+        #    os.remove(temp_filtered_path)
     
 def gaussian_halo(sigmaz, sigmay, sigmax, truncate=4.0):
     return (
