@@ -23,6 +23,11 @@ def parse_args():
     parser.add_argument('-backend', type=str, default='CPU',choices=['CPU','GPU'], required=False , help = 'A')
     parser.add_argument("-NSigmaSpatial", type=int, default = 0, required=False, help = 'Max spatial sigma for convolution. [Default:0]')
 
+    parser.add_argument('-OutputPath', type=str, default='OutputGetLine', required=False,
+                        help = 'Directory where the outputs will be saved, if exists the codes finished, otherwise will be created [Default:OutputLineSearch]'
+                        )
+
+
     args = parser.parse_args()
 
     return args

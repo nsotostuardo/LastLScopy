@@ -8,6 +8,7 @@ from astropy import wcs
 from astropy.coordinates import SkyCoord
 import astropy.io.fits as fits
 import numpy as np
+import os
 
 
 class PipeLine(ABC):
@@ -352,11 +353,13 @@ class RealSources(ABC): #### Agrgar el espacial...
         for i in range(len(ra)):
             c.append(SkyCoord(ra[i], dec[i], frame='icrs', unit='deg'))
 
-        Output = open(f'LineCandidates{self.type_LineCandidate}.dat','w')
+        output_path = os.path.join(self.args.OutputPath, f'LineCandidates{self.type_LineCandidate}.dat')
+        Output = open(output_path,'w')
         Output.write('#ID RA DEC FREQ SigmaSN SigmaSp SN P PE1 PE2 PSim PSimE1 PSimE2 PPesimistic PPesimisticE1 PPesimisticE2 PSimPesimistic PSimPesimisticE1 PSimPesimisticE2\n')
 
         if to_csv:
-            csv_output = open(f'LineCandidates{self.type_LineCandidate}.csv','w')
+            csv_output_path = os.path.join(self.args.OutputPath, f'LineCandidates{self.type_LineCandidate}.csv')
+            csv_output = open(csv_output_path,'w')
             csv_output.write('ID,RA,DEC,FREQ,SigmaSN,SigmaSp,SN,P,PE1,PE2,PSim,PSimE1,PSimE2,PPesimistic,PPesimisticE1,PPesimisticE2,PSimPesimistic,PSimPesimisticE1,PSimPesimisticE2\n')
   
         for i in range(len(candidates["fX"])):

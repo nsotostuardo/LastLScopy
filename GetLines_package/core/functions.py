@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 from astropy.io import fits
 from astropy.table import Table
 from scipy.special import gammaincinv
@@ -109,7 +110,8 @@ def plot_N_positive_negative(estimates, NPositive_e1, NPositive_e2, sigma, spati
 	ax2.set_ylim(ymin=0.1)
 	ax2.set_xticks(np.arange(int(args.MinSN),8,1))
 	ax2.grid(True)
-	fig2.savefig('NumberPositiveNegative_'+str(sigma)+"_"+str(spatial)+'.pdf')
+	output_file = os.path.join(args.OutputPath, 'NumberPositiveNegative_'+str(sigma)+"_"+str(spatial)+'.pdf')
+	fig2.savefig(output_file)
 
 def LS_final_candidates(SourcesTotalPos, PixelsPerBMAJ):
 	COORD = []
@@ -338,5 +340,4 @@ def save_negatives(data, MinSN, FolderForLinesFiles, sigmas):
 	t = Table([pix1, pix3, pix2,-1.0*data[pix1,pix2,pix3]], names=('Channel', 'Xpix', 'Ypix','SN'))
 	t.write(FolderForLinesFiles+'/line_dandidates_sn_sigmas'+str(sigmas)+'_neg.fits', format='fits',overwrite=True)
 	print('Negative pixels in search for Sigmas:',sigmas,'N:',len(pix2))
-
 

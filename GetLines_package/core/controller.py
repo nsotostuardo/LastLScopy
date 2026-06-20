@@ -59,7 +59,14 @@ def main(args):
             positive_sources.fix_SN()
             negative_sources.fix_SN()
 
-            estimates = get_poisson_estimates(bins, positive_sources.SN, negative_sources.SN, args.LimitN, args.MinSN)
+            estimates = get_poisson_estimates(
+                bins,
+                positive_sources.SN,
+                negative_sources.SN,
+                args.LimitN,
+                args.MinSN,
+                args.OutputPath,
+            )
         
             NPositive_e1, NPositive_e2 = n_positives(estimates["nPositive"])
             plot_N_positive_negative(estimates, NPositive_e1, NPositive_e2, sigmas, spatial, args)

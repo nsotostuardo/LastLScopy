@@ -1,9 +1,10 @@
 import numpy as np
+import os
 import scipy.ndimage
 from scipy.optimize import curve_fit
 
 
-def get_poisson_estimates(bins,SNFinalPos,SNFinalNeg,LimitN,MinSN):
+def get_poisson_estimates(bins,SNFinalPos,SNFinalNeg,LimitN,MinSN,OutputPath):
 
 	ProbPoisson = []
 	ProbPoissonE1 = []
@@ -86,7 +87,7 @@ def get_poisson_estimates(bins,SNFinalPos,SNFinalNeg,LimitN,MinSN):
 	MinSNtoFit = min(bins)
 	UsableBins = len(Nnegative[bins>=MinSNtoFit][Nnegative[bins>=MinSNtoFit]>LimitN])
 
-	AuxiliarOutput = open('SN_UsedInFit.dat','w')
+	AuxiliarOutput = open(os.path.join(OutputPath, 'SN_UsedInFit.dat'),'w')
 	print('Min SN to do the fit:',round(MinSNtoFit,1),', Number of usable bins:',UsableBins)
 	AuxiliarOutput.write(str(round(MinSNtoFit,1))+' ' + str(UsableBins)+'\n')
 	if UsableBins<6:

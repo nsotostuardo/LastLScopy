@@ -10,9 +10,9 @@ def check_file(path:str):
 
 def check_output_path(path:str):
     """Verifies output directory existance"""
-    if not os.path.isfile(path):
+    if not os.path.exists(path):
         print('*** Creating Directory',path,' ***')
-        os.mkdir(path)
+        os.makedirs(path)
     else:
         raise FileNotFoundError('*** Directory',path,'exists ***\naborting..')
         
@@ -34,6 +34,7 @@ def min_SN(SN:float):
 
 def check_args(args):
     print(20*'#','Checking inputs....',20*'#')
+    check_output_path(args.OutputPath)
     check_file(args.Cube)
     max_sigma(args.MaxSigmas)
     min_SN(args.MinSN)
