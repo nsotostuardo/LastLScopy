@@ -27,7 +27,7 @@ def main(args):
     FactorLEE = get_LEE_factor(args) 
     ax = make_figure()
 
-    bins = get_binning(args.MinSN)
+    bins, bins_float = get_binning(args.MinSN)
 
     pipeline = get_pipeline(args)
     positive_sources = Positive(args)
@@ -50,17 +50,18 @@ def main(args):
             negative_sources.real_SN()
 
             print('for sigma', sigmas)
-            positive_sources.get_ys(bins)
-            negative_sources.get_ys(bins)
+            positive_sources.get_ys(bins_float)
+            negative_sources.get_ys(bins_float)
 
-            positive_sources.plot_y(sigmas, bins, ax)
-            negative_sources.plot_y(sigmas, bins, ax)
+            positive_sources.plot_y(sigmas, bins_float, ax)
+            negative_sources.plot_y(sigmas, bins_float, ax)
 
             positive_sources.fix_SN()
             negative_sources.fix_SN()
 
             estimates = get_poisson_estimates(
                 bins,
+                bins_float,
                 positive_sources.SN,
                 negative_sources.SN,
                 args.LimitN,

@@ -175,37 +175,43 @@ class RealSources(ABC): #### Agrgar el espacial...
         self.SN = self.SN[np.argsort(self.SN)][::-1]
 
         self.SN = np.rint(self.SN * 10.0).astype(np.int32)
-        self.SN = self.SN.astype(np.float64) / 10.0
 
     def get_sources_total_pos(self, estimates, sigma, spatial):
         bins = estimates["bins"]
+        bins_float = estimates["bins_float"]
         SNReal = self.SN
         for source in self.real_sources:
-            if max(source[3]) >= self.args.MinSN:
-                sn = round(max(source[3]),1)
+            sn = int(np.rint(max(source[3]) * 10.0))
+            if sn >= bins[0]:
+                sn_float = sn / 10.0
                 if self.N_simulations2 > 0:
-                    aux,ErrorPSimulation_1,ErrorPSimulation_2 = GetPoissonErrorGivenMeasurements(np.interp(sn,bins, self.y)*self.N_simulations2,self.N_simulations2)
+                    aux,ErrorPSimulation_1,ErrorPSimulation_2 = GetPoissonErrorGivenMeasurements(np.interp(sn_float,bins_float, self.y)*self.N_simulations2,self.N_simulations2)
                 else:
                     ErrorPSimulation_1 = 0.0
                     ErrorPSimulation_2 = 0.0
 
-                index = np.argmin(abs(estimates["bins"] - sn))
+                index = np.searchsorted(bins, sn)
+                if index >= len(bins):
+                    index = len(bins) - 1
                 ErrorPPoisson_1 = estimates["pPoissonE1"][index]
                 ErrorPPoisson_2 = estimates["pPoissonE2"][index]
 
-                PNegativeTotalE1Real = np.interp(sn,bins,estimates["pNegOverPosE1"])
-                PNegativeTotalE2Real = np.interp(sn,bins,estimates["pNegOverPosE2"])
-                PNegativeDifTotalReal = np.interp(sn,bins,estimates["pNegOverPosDif"])
-                PNegativeDifTotalE1Real = np.interp(sn,bins,estimates["pNegOverPosDifE1"])
-                PNegativeDifTotalE2Real = np.interp(sn,bins,estimates["pNegOverPosDifE2"])
+                PNegativeTotalE1Real = np.interp(sn_float,bins_float,estimates["pNegOverPosE1"])
+                PNegativeTotalE2Real = np.interp(sn_float,bins_float,estimates["pNegOverPosE2"])
+                PNegativeDifTotalReal = np.interp(sn_float,bins_float,estimates["pNegOverPosDif"])
+                PNegativeDifTotalE1Real = np.interp(sn_float,bins_float,estimates["pNegOverPosDifE1"])
+                PNegativeDifTotalE2Real = np.interp(sn_float,bins_float,estimates["pNegOverPosDifE2"])
 
-                if self.N_simulations2>0 and (len(SNReal[SNReal>=sn]) - len(SNReal[SNReal>=sn+0.1]))>0:
-                    Rate = np.interp(sn,bins,self.yExpected) - np.interp(sn+0.1,bins,self.yExpected)
-                    RateSigma = 0.5*np.sqrt(np.sum(np.power(np.array([np.interp(sn,bins,self.yExpectedSigma),np.interp(sn+0.1,bins,self.yExpectedSigma)]),2)))
+                n_at_sn = np.count_nonzero(SNReal >= sn)
+                n_at_next = np.count_nonzero(SNReal >= sn + 1)
+
+                if self.N_simulations2>0 and (n_at_sn - n_at_next)>0:
+                    Rate = np.interp(sn_float,bins_float,self.yExpected) - np.interp((sn + 1) / 10.0,bins_float,self.yExpected)
+                    RateSigma = 0.5*np.sqrt(np.sum(np.power(np.array([np.interp(sn_float,bins_float,self.yExpectedSigma),np.interp((sn + 1) / 10.0,bins_float,self.yExpectedSigma)]),2)))
                     auxSimulationExpected = [Rate - RateSigma,Rate,Rate + RateSigma]
-                    Psimexpected = 1.0 - max(0,len(SNReal[SNReal>=sn]) - len(SNReal[SNReal>=sn+0.1]) - auxSimulationExpected[1])*1.0/(len(SNReal[SNReal>=sn]) - len(SNReal[SNReal>=sn+0.1]))
-                    Psimexpected1 = 1.0 - max(0,len(SNReal[SNReal>=sn]) - len(SNReal[SNReal>=sn+0.1]) - auxSimulationExpected[0])*1.0/(len(SNReal[SNReal>=sn]) - len(SNReal[SNReal>=sn+0.1]))
-                    Psimexpected2 = 1.0 - max(0,len(SNReal[SNReal>=sn]) - len(SNReal[SNReal>=sn+0.1]) - auxSimulationExpected[2])*1.0/(len(SNReal[SNReal>=sn]) - len(SNReal[SNReal>=sn+0.1]))
+                    Psimexpected = 1.0 - max(0,n_at_sn - n_at_next - auxSimulationExpected[1])*1.0/(n_at_sn - n_at_next)
+                    Psimexpected1 = 1.0 - max(0,n_at_sn - n_at_next - auxSimulationExpected[0])*1.0/(n_at_sn - n_at_next)
+                    Psimexpected2 = 1.0 - max(0,n_at_sn - n_at_next - auxSimulationExpected[2])*1.0/(n_at_sn - n_at_next)
                 else:
                     Psimexpected = 0.0
                     Psimexpected1 = 0.0
@@ -225,9 +231,9 @@ class RealSources(ABC): #### Agrgar el espacial...
                                 source[2][np.argmax(source[3])],
                                 source[3][np.argmax(source[3])],
                                 source[4],
-                                np.interp(source[3][np.argmax(source[3])],bins,self.y),
-                                np.interp(source[3][np.argmax(source[3])],bins,estimates["pNegOverPos"]),
-                                np.interp(source[3][np.argmax(source[3])],bins,estimates["pPoisson"]),ErrorPSimulation_1,
+                                np.interp(sn_float,bins_float,self.y),
+                                np.interp(sn_float,bins_float,estimates["pNegOverPos"]),
+                                np.interp(sn_float,bins_float,estimates["pPoisson"]),ErrorPSimulation_1,
                                 ErrorPSimulation_2,
                                 ErrorPPoisson_1,
                                 ErrorPPoisson_2,

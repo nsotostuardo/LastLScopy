@@ -70,7 +70,10 @@ def make_figure():
 	return ax1
 
 def get_binning(min_sigma):
-	return np.arange(min_sigma,8.1,0.1)
+	start10 = int(np.rint(min_sigma * 10.0))
+	bins = np.arange(start10, 81, 1, dtype=np.int32)
+	bins_float = bins.astype(np.float64) / 10.0
+	return bins, bins_float
 
 def n_positives(NPositive):
 	NPositive_e1 = []
@@ -89,7 +92,7 @@ def plot_N_positive_negative(estimates, NPositive_e1, NPositive_e2, sigma, spati
 	fig2.subplots_adjust(left=0.15, bottom=0.13, right=0.94, top=0.96,wspace=0.10, hspace=0.2)
 	ax2 = fig2.add_subplot(111)
 
-	bins = estimates['bins']
+	bins = estimates['bins_float']
 	NPositive = estimates['nPositive']
 	NnegativeReal = estimates['nNegReal']
 	Nnegative = estimates["nNegative"]
@@ -340,4 +343,3 @@ def save_negatives(data, MinSN, FolderForLinesFiles, sigmas):
 	t = Table([pix1, pix3, pix2,-1.0*data[pix1,pix2,pix3]], names=('Channel', 'Xpix', 'Ypix','SN'))
 	t.write(FolderForLinesFiles+'/line_dandidates_sn_sigmas'+str(sigmas)+'_neg.fits', format='fits',overwrite=True)
 	print('Negative pixels in search for Sigmas:',sigmas,'N:',len(pix2))
-
